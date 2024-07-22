@@ -1,0 +1,7 @@
+jupyter
+pandas
+numpy
+# Set up Open Data/Socrata Connection
+sodapy
+# saving environment variables
+python-dotenv
