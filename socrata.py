@@ -3,6 +3,9 @@ import pandas as pd
 import os
 from sodapy import Socrata
 from dotenv import load_dotenv
+import time
+import math
+
 load_dotenv()
 
 def socrata_api_query(
@@ -97,19 +100,39 @@ def socrata_api_query(
     return opendata_df
 
 if __name__ == '__main__':
+    print('Geometry of flatbush community distrinct (314)')
+    start_time = time.time()
     od_df = socrata_api_query(
         dataset_id='jp9i-3b7y', 
         timeout=10, 
         where='boro_cd = 314', 
         select='boro_cd, the_geom',
         )
+    end_time = time.time()
+    print(od_df)
+    len_sec = end_time - start_time
+    min_time = math.floor(len_sec / 60)
+    print(
+        f'Duration: {min_time} min'
+        f' {len_sec - min_time * 60:.4} sec'
+    )
     
-    df_df = socrata_api_query(
+    print('\nNumber of SR on July 4th, 2024, by borough')
+    start_time = time.time()
+    od_df = socrata_api_query(
         dataset_id='erm2-nwe9',
         timeout=360,
         select='borough, count(*) as sr_count',
         where="(date_trunc_ymd(created_date) = '2024-07-04')",
         group="borough",
     )
-
+    end_time = time.time()
+    print(od_df)
+    len_sec = end_time - start_time
+    min_time = math.floor(len_sec / 60)
+    print(
+        f'Duration: {min_time} min'
+        f' {len_sec - min_time * 60:.4} sec'
+    )
+    
 # %%
