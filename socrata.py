@@ -90,12 +90,24 @@ def socrata_api_query(
         "query": kwargs.pop("query", None),
         "exclude_system_fields": kwargs.pop("exclude_system_fields", None),
     }
+
+    start_time = time.time()
+    print('Running query...')
     
     client = Socrata("data.cityofnewyork.us", app_token)
     client.timeout = timeout
     
     results = client.get(dataset_id, **params)
     opendata_df = pd.DataFrame.from_records(results)
+
+    end_time = time.time()
+    len_time = end_time - start_time
+
+    min_time = math.floor(len_time / 60)
+    print(
+        f'Duration: {min_time} min'
+        f' {len_time - min_time * 60:.4} sec'
+    )
     
     return opendata_df
 
