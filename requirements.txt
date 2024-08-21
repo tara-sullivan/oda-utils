@@ -6,5 +6,5 @@ sodapy
 # saving environment variables
 python-dotenv
 # For snowflake connection
-snowflake-connector-python
+# snowflake-connector-python
 snowflake-connector-python[pandas]

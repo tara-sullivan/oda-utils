@@ -293,8 +293,8 @@ if __name__ == '__main__':
     
     print('Setting up test connection for RatStat')
     sf_conn = SnowflakeConnection(
-        user_env='RATSTAT_SF_USER',
-        pwd_env='RATSTAT_SF_PWD',
+        user_env='SNOWFLAKE_USER',
+        pwd_env='SNOWFLAKE_PWD',
         account='NYC-OTI_ODA_DEV',
         warehouse='LOADER_WH',
         database='ODADB',
