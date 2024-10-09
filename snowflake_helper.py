@@ -133,7 +133,7 @@ class SnowflakeConnection:
                 password = self.pwd
         
         # Method implementation
-        print('Connecting...')
+        print('Connecting to Snowflake...')
         conn = snowflake.connector.connect(
             user=self.user,
             password=password,
