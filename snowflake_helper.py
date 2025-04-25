@@ -70,6 +70,10 @@ class SnowflakeConnection:
         Name of the default snowflake database to use.
     schema : 'str' 
         Name of the default snowflake schema to use for the database.
+    account_env: 'str', default None
+        Environment in which snowflake account db is saved
+    account: 'str', default None
+        Snowflake database name. Preferable to use account_env.
     user_env: 'str', default None
         Environment in which snowflake login name for user is saved.
     user: 'str', default None
@@ -90,10 +94,11 @@ class SnowflakeConnection:
     '''
     def __init__(
         self, 
-        account: 'str', 
         warehouse: 'str',
         database: 'str',
         schema: 'str',
+        account_env: 'str' = None,
+        account: 'str' = None,
         user_env: 'str' = None,
         user: 'str' = None,
         pwd_env: 'str' = None,
@@ -103,6 +108,15 @@ class SnowflakeConnection:
         self.warehouse = warehouse
         self.database = database
         self.schema = schema
+
+        if account_env is not None:
+            self.account=os.getenv(account_env)
+        else:
+            if account is not None:
+                self.account=account
+            else:
+                print('Please pass account_env')
+
         if user_env is not None:
             self.user=os.getenv(user_env)
         else:
@@ -295,7 +309,7 @@ if __name__ == '__main__':
     sf_conn = SnowflakeConnection(
         user_env='SNOWFLAKE_USER',
         pwd_env='SNOWFLAKE_PWD',
-        account='NYC-OTI_ODA_DEV',
+        account_env='SNOWFLAKE_ACCT',
         warehouse='LOADER_WH',
         database='ODADB',
         schema='DASHBOARD'
