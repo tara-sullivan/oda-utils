@@ -115,7 +115,7 @@ if __name__ == '__main__':
     print('Geometry of flatbush community distrinct (314)')
     start_time = time.time()
     od_df = socrata_api_query(
-        dataset_id='jp9i-3b7y', 
+        dataset_id='6ak9-vek3', 
         timeout=10, 
         where='boro_cd = 314', 
         select='boro_cd, the_geom',
@@ -146,5 +146,6 @@ if __name__ == '__main__':
         f'Duration: {min_time} min'
         f' {len_sec - min_time * 60:.4} sec'
     )
+
     
 # %%
