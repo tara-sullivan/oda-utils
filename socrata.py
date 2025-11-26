@@ -128,12 +128,15 @@ if __name__ == '__main__':
         f'Duration: {min_time} min'
         f' {len_sec - min_time * 60:.4} sec'
     )
+
+# %%
+if __name__ == '__main__':
     
     print('\nNumber of SR on July 4th, 2024, by borough')
     start_time = time.time()
     od_df = socrata_api_query(
         dataset_id='erm2-nwe9',
-        timeout=360,
+        timeout=480,
         select='borough, count(*) as sr_count',
         where="(date_trunc_ymd(created_date) = '2024-07-04')",
         group="borough",
