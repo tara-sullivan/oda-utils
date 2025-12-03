@@ -4,57 +4,23 @@
 # Connector for python:
 #
 # >pip install "snowflake-connector-python[pandas]"
-#
-# Link: https://docs.snowflake.com/en/developer-guide/python-connector/python-connector-pandas
-# 
-# Additionally, configure snowflake as a datasource in domino. To create a new 
-# data source in domino:
-#     * Select Data > "+ Create a Data Source" or "Connect to to external data"
-#     * From Select Data Store dropdown menu, select Snowflake
-#     * Fill in the appropriate information:
-#         - Authenticate with your credentials
-#         - Add other collaborators
-# In your project, click Data > + Add Data source. You should be able to add 
-# your created data source (it might take a minute to show up). Add the data 
-# source to project. 
 
-import os
 import pandas as pd
-import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
+import snowflake.connector
+from pathlib import Path
 from dotenv import load_dotenv
+import os
 
 load_dotenv()
+# get path to snowflake private key directory
+SF_KEY_DIR = Path(__file__).resolve().parents[0]
+# full path to snowflake private key
+SF_KEY_DEV_FILE = SF_KEY_DIR / 'sf_key_dev.p8'
+
+RUN_CHECKS = False
 
 # %%
-
-
-def rename_cols_for_snowflake(df):
-    """Snowflake columns need to adopt certain conventions, such as
-    no spaces and no parentheses.
-    """
-    df = df.copy()
-    df.columns = (
-        df.columns.str.replace(r'\(([^)]*)\)', r'\1', regex=True)
-        .str.replace(' ', '_', regex=False)
-        .str.replace(r'^Group$', 'Group_Name', regex=True)
-        .str.replace('%', 'percent')
-    )
-    return df
-
-
-def csv_to_snowflake(
-    csv:'str', 
-    table_name:'str', 
-    snowflake_connection: 'SnowflakeConnection'
-):
-    csv_df = pd.read_csv(csv)
-    snowflake_connection.write_df(
-        df=csv_df,
-        table_name=table_name, 
-        how='replace'
-    ) 
-
 
 class SnowflakeConnection:
     '''
@@ -70,18 +36,12 @@ class SnowflakeConnection:
         Name of the default snowflake database to use.
     schema : 'str' 
         Name of the default snowflake schema to use for the database.
-    account_env: 'str', default None
-        Environment in which snowflake account db is saved
-    account: 'str', default None
-        Snowflake database name. Preferable to use account_env.
     user_env: 'str', default None
         Environment in which snowflake login name for user is saved.
     user: 'str', default None
         Snowflake login name for user. Preferable to use user_env.
-    pwd_env: 'str', default None
-        Environment in which snowflake password for user is saved.
-    pwd: 'str', default None
-        Snowflake password for user. Preferable to use pwd_env.
+    key_path: 'str', default None
+        Path to private key; should be a .p8 file
         
     Methods
     -------
@@ -99,10 +59,9 @@ class SnowflakeConnection:
         schema: 'str',
         account_env: 'str' = None,
         account: 'str' = None,
+        key_path: 'str' = None,
         user_env: 'str' = None,
         user: 'str' = None,
-        pwd_env: 'str' = None,
-        pwd: 'str' = None
     ):  # Constructor
         self.account = account
         self.warehouse = warehouse
@@ -124,39 +83,34 @@ class SnowflakeConnection:
                 self.user=user
             else:
                 print('Please pass user_env.')
-                
-        if pwd_env is not None:
-            self.pwd_env = pwd_env
+
+        # key for snowflake authentication
+        if key_path is not None:
+            self.key_path = key_path
         else:
-            if pwd is not None:
-                self.pwd = pwd
-            else:
-                print('Please pass pwd_env.')
-                
+            print('Please pass key_path.')
+
         self.connection = self.create_connection()
 
 
-    def create_connection(self):
+    def create_connection(self, print_progress=True):
         '''
         Create snowflake connection.
         '''
-        if self.pwd_env is not None:
-            password = os.getenv(self.pwd_env)
-        else:
-            if self.pwd is not None:
-                password = self.pwd
-        
         # Method implementation
-        print('Connecting to Snowflake...')
+        if print_progress:
+            print('Connecting to Snowflake...')
         conn = snowflake.connector.connect(
             user=self.user,
-            password=password,
+            private_key_file=self.key_path,
+            authenticator='SNOWFLAKE_JWT',
             account=self.account,
             warehouse=self.warehouse,
             database=self.database,
             schema=self.schema
         )
-        print('Connection successful.')
+        if print_progress:
+            print('Connection successful.')
 
         return conn
     
@@ -270,8 +224,26 @@ class SnowflakeConnection:
         # if length of returned dataframe is 0, returns false
         return bool(len(temp_df))
     
+    def _check_date_last_altered(self, table_name:'str'):
+        query = (
+            "SELECT TO_VARCHAR(LAST_ALTERED, 'YYYY-MM-DD') AS date_last_altered"
+            " FROM INFORMATION_SCHEMA.TABLES"
+            " WHERE 1=1"
+            " AND TABLE_CATALOG = CURRENT_DATABASE ()"
+            " AND TABLE_SCHEMA = CURRENT_SCHEMA ()"
+            f" AND TABLE_NAME = '{table_name.upper()}'"
+        )
+        with self.connection.cursor() as cur:
+            cur.execute(query)
+            temp_df = cur.fetch_pandas_all()
+        
+        return temp_df['DATE_LAST_ALTERED'].item()
+    
     def _get_table_row_count(self, table_name, print_query=False):
-        '''Get number of rows for a particular table, if it exists; otherwise returns 0'''
+        '''
+        Get number of rows for a particular table, if it exists; otherwise returns 0.
+        Note: could use information schema query and query ROW_COUNT
+        '''
         if self._check_table_exists(table_name):
             with self.connection.cursor() as cur:
                 query = f'SELECT COUNT(*) AS CNT FROM {self.database}.{self.schema}.{table_name}'
@@ -282,6 +254,20 @@ class SnowflakeConnection:
             row_count = 0
         return row_count
 
+
+# %% Check conncection
+
+if __name__ == '__main__':
+    sf_conn = SnowflakeConnection(
+        user_env='SF_USER_DEV_ENV',
+        key_path=SF_KEY_DEV_FILE,
+        account_env='SF_ACCOUNT_DEV_ENV',
+        warehouse=os.getenv('SF_WH_DEV_ENV'),
+        database=os.getenv('SF_DATABASE_DEV_ENV'),
+        schema=os.getenv('SF_SCHEMA_DEV_ENV')
+    )
+
+# %%
 
 if __name__ == '__main__':
     data_dict = {'A': [1, 2], 'B': [5, 6]}
@@ -304,16 +290,6 @@ if __name__ == '__main__':
 
     print('Test Data Frame D: ')
     print(test_df_d)
-    
-    print('Setting up test connection for RatStat')
-    sf_conn = SnowflakeConnection(
-        user_env='SNOWFLAKE_USER',
-        pwd_env='SNOWFLAKE_PWD',
-        account_env='SNOWFLAKE_ACCT',
-        warehouse='LOADER_WH',
-        database='ODADB',
-        schema='DASHBOARD'
-    )
     
     # test the query for checking a table exists; drop if it does
     test_table = 'temp_sf_table'
@@ -350,3 +326,5 @@ if __name__ == '__main__':
     print(sf_conn.read_table(test_table))
           
     sf_conn.drop_table(test_table)
+
+# %%
