@@ -152,3 +152,27 @@ if __name__ == '__main__':
 
     
 # %%
+
+if __name__ == '__main__':
+    import geopandas as gpd
+    from shapely.geometry import shape
+    import matplotlib.pyplot as plt
+
+    # get borough outline
+    nybb_df = socrata_api_query(dataset_id='gthc-hcne')
+    nybb_df['geometry'] = [shape(geo) for geo in nybb_df['the_geom']]
+
+    nybb_gdf = gpd.GeoDataFrame(
+        data=nybb_df,
+        geometry='geometry',
+        crs='EPSG:4326'
+    )
+
+    fig, ax = plt.subplots(figsize=(5, 3))
+    nybb_gdf.plot(ax=ax, color='white', edgecolor='black', facecolor='none')
+
+    xlim = ax.axes.get_xlim()
+    ylim = ax.axes.get_ylim()
+
+    # ax.axis('off')
+# %%
