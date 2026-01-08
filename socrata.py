@@ -168,11 +168,15 @@ if __name__ == '__main__':
         crs='EPSG:4326'
     )
 
-    fig, ax = plt.subplots(figsize=(5, 3))
+    fig, ax = plt.subplots(figsize=(4, 3))
     nybb_gdf.plot(ax=ax, color='white', edgecolor='black', facecolor='none')
 
     xlim = ax.axes.get_xlim()
     ylim = ax.axes.get_ylim()
+
+    fig.savefig('output/nybb.png', bbox_inches='tight')
+
+    nybb_df.to_csv('output/nybb.csv', index=False)
 
     # ax.axis('off')
 # %%
